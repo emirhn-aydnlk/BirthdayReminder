@@ -9,54 +9,68 @@ import androidx.core.view.WindowInsetsCompat
 class AddBirthdayActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContentView(R.layout.activity_add_birthday)
 
-        // 1. Tasarımdaki elemanları tanıtalım
+        // 1. TÜM ELEMANLARI EN ÜSTTE TANITIYORUZ
         val tvTarih = findViewById<android.widget.TextView>(R.id.tvTarih)
         val btnTarihSec = findViewById<android.widget.Button>(R.id.btnTarihSec)
-
-// 2. Takvim ayarlarını tutacak bir nesne oluşturalım
-// (Bu nesne hem varsayılan tarihi gösterecek hem de seçileni tutacak)
+        val btnKaydet = findViewById<android.widget.Button>(R.id.btnKaydet)
+        val etIsim = findViewById<android.widget.EditText>(R.id.etIsim)
+        val cbBugun = findViewById<android.widget.CheckBox>(R.id.cbBugun)
+        val cbBirGunOnce = findViewById<android.widget.CheckBox>(R.id.cbBirGunOnce)
+        val cbBirHaftaOnce = findViewById<android.widget.CheckBox>(R.id.cbBirHaftaOnce)
         val takvim = java.util.Calendar.getInstance()
 
-// 3. Butona tıklanma olayını yazalım
         btnTarihSec.setOnClickListener {
-
-            // Şimdiki zamanı alalım ki takvim açılınca bugünü göstersin
             val yil = takvim.get(java.util.Calendar.YEAR)
             val ay = takvim.get(java.util.Calendar.MONTH)
             val gun = takvim.get(java.util.Calendar.DAY_OF_MONTH)
 
-            // 4. DatePickerDialog (Tarih Seçici Pencere) oluşturuyoruz
-            val datePicker = android.app.DatePickerDialog(
-                this,
+            val datePicker = android.app.DatePickerDialog(this,
                 { _, secilenYil, secilenAy, secilenGun ->
-                    // KULLANICI "TAMAM"A BASINCA BURASI ÇALIŞIR
-
-                    // ÖNEMLİ NOT: Android'de aylar 0'dan başlar (Ocak=0, Şubat=1).
-                    // O yüzden ekranda düzgün gözüksün diye aya +1 ekliyoruz.
                     val gercekAy = secilenAy + 1
-
-                    // Seçilen tarihi TextView'a yazdıralım
                     tvTarih.text = "$secilenGun/$gercekAy/$secilenYil"
 
-                    // Seçilen tarihi hafızadaki takvim nesnesine de kaydedelim (Kaydet butonu için lazım olacak)
+                    // Seçilen tarihi hafızaya (takvime) atıyoruz
                     takvim.set(secilenYil, secilenAy, secilenGun)
-
-                }, yil, ay, gun
-            ) // Takvim açıldığında varsayılan olarak hangi gün seçili gelsin?
-
-            // 5. Pencereyi göster!
+                }, yil, ay, gun)
             datePicker.show()
+        }
 
-            enableEdgeToEdge()
+        // 4. KAYDET BUTONU TIKLANMA KODLARI
+        btnKaydet.setOnClickListener {
+            val girilenIsim = etIsim.text.toString()
 
-            ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.btnTarihSec)) { v, insets ->
-                val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-                v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-                insets
+            if (girilenIsim.isEmpty()) {
+                android.widget.Toast.makeText(this, "Lütfen bir isim girin!", android.widget.Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+
+            // ARTIK BURASI KIRMIZI YANMAYACAK ÇÜNKÜ "takvim"i YUKARIDA (2. ADIMDA) GÖRÜYOR
+            val yil = takvim.get(java.util.Calendar.YEAR)
+            val ay = takvim.get(java.util.Calendar.MONTH) + 1
+            val gun = takvim.get(java.util.Calendar.DAY_OF_MONTH)
+
+            val dogumGunuVerisi = hashMapOf(
+                "isim" to girilenIsim,
+                "gun" to gun,
+                "ay" to ay,
+                "yil" to yil,
+                "bugunHatirlat" to cbBugun.isChecked,
+                "birGunOnceHatirlat" to cbBirGunOnce.isChecked,
+                "birHaftaOnceHatirlat" to cbBirHaftaOnce.isChecked
+            )
+
+            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            db.collection("DogumGunleri")
+                .add(dogumGunuVerisi)
+                .addOnSuccessListener {
+                    android.widget.Toast.makeText(this, "Başarıyla Kaydedildi! 🚀", android.widget.Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+                .addOnFailureListener { hata ->
+                    android.widget.Toast.makeText(this, "Hata oluştu: ${hata.message}", android.widget.Toast.LENGTH_LONG).show()
+                }
         }
     }
 }
