@@ -1,5 +1,6 @@
 package com.example.birthdayreminder
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -46,6 +47,17 @@ class AddBirthdayActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            // ... isim kontrolünden hemen sonra ...
+
+            // 1. Herhangi bir kutucuk seçilmiş mi kontrol edelim
+            val secenekSecildiMi = cbBugun.isChecked || cbBirGunOnce.isChecked || cbBirHaftaOnce.isChecked
+
+            // 2. Eğer hiçbiri seçilmemişse (! işareti "değilse" demektir)
+            if (!secenekSecildiMi) {
+                android.widget.Toast.makeText(this, "Lütfen en az bir hatırlatma seçeneği seçin!", android.widget.Toast.LENGTH_SHORT).show()
+                return@setOnClickListener // İşlemi burada durdur, aşağıya (Firebase'e) geçme
+            }
+
             // ARTIK BURASI KIRMIZI YANMAYACAK ÇÜNKÜ "takvim"i YUKARIDA (2. ADIMDA) GÖRÜYOR
             val yil = takvim.get(java.util.Calendar.YEAR)
             val ay = takvim.get(java.util.Calendar.MONTH) + 1
@@ -71,6 +83,73 @@ class AddBirthdayActivity : AppCompatActivity() {
                 .addOnFailureListener { hata ->
                     android.widget.Toast.makeText(this, "Hata oluştu: ${hata.message}", android.widget.Toast.LENGTH_LONG).show()
                 }
+
+            // ... Firebase addOnSuccessListener içinde ...
+            if (cbBugun.isChecked) alarmKur(girilenIsim, yil, gun, ay, 0, "bugün doğum günü!")
+            if (cbBirGunOnce.isChecked) alarmKur(girilenIsim, yil, gun, ay, 1, "doğum günü yarın!")
+            if (cbBirHaftaOnce.isChecked) alarmKur(girilenIsim, yil, gun, ay, 7, "doğum gününe 1 hafta kaldı!")
+        }
+    }
+
+    private fun alarmKur(isim: String, dogumYili: Int, gun: Int, ay: Int, offset: Int, mesaj: String) {
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val intent = android.content.Intent(this, AlarmReceiver::class.java).apply {
+            putExtra("ISIM", isim)
+            putExtra("MESAJ", mesaj)
+        }
+
+        // Her alarmın farklı bir kimliği olmalı (çakışmasınlar diye)
+        val alarmId = (isim + mesaj).hashCode()
+        val pendingIntent = android.app.PendingIntent.getBroadcast(
+            this, alarmId, intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val takvim = java.util.Calendar.getInstance()
+        val suankiYil = takvim.get(java.util.Calendar.YEAR)
+
+        // Alarm tarihini ayarlıyoruz
+        val hedefTakvim = java.util.Calendar.getInstance()
+        hedefTakvim.set(java.util.Calendar.YEAR, suankiYil)
+        hedefTakvim.set(java.util.Calendar.MONTH, ay - 1)
+        hedefTakvim.set(java.util.Calendar.DAY_OF_MONTH, gun)
+        hedefTakvim.set(java.util.Calendar.HOUR_OF_DAY, 9) // Sabah 09:00'da çalsın
+        hedefTakvim.set(java.util.Calendar.MINUTE, 0)
+
+        // Seçilen seçeneğe göre (o gün, 1 gün önce, 1 hafta önce) tarihi kaydır
+        hedefTakvim.add(java.util.Calendar.DATE, -offset)
+
+        // Eğer tarih geçmişse bir sonraki yıla kur
+        if (hedefTakvim.before(java.util.Calendar.getInstance())) {
+            hedefTakvim.add(java.util.Calendar.YEAR, 1)
+        }
+
+        // Yaş hesaplama (Bildirim metni için)
+        val yeniMesaj = if (offset == 0) "bugün ${hedefTakvim.get(java.util.Calendar.YEAR) - dogumYili} yaşına girdi!" else mesaj
+        intent.putExtra("MESAJ", yeniMesaj)
+
+        // Alarmı kur (Tam vaktinde çalması için)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            // Telefon Android 12 veya üzeriyse izin kontrolü yapıyoruz
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    android.app.AlarmManager.RTC_WAKEUP,
+                    hedefTakvim.timeInMillis,
+                    pendingIntent
+                )
+            } else {
+                // Kullanıcıya izin vermediğini söyleyip ayarlar sayfasına yönlendiriyoruz
+                android.widget.Toast.makeText(this, "Hatırlatıcı için 'Alarmlar' izni vermeniz gerekiyor!", android.widget.Toast.LENGTH_LONG).show()
+                val ayarlarIntent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                startActivity(ayarlarIntent)
+            }
+        } else {
+            // Telefon eski (Android 11 ve altı) ise doğrudan kurabiliriz
+            alarmManager.setExactAndAllowWhileIdle(
+                android.app.AlarmManager.RTC_WAKEUP,
+                hedefTakvim.timeInMillis,
+                pendingIntent
+            )
         }
     }
 }

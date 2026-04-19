@@ -23,24 +23,32 @@ class DogumGunuAdapter(private val liste: List<DogumGunu>) : RecyclerView.Adapte
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val kisi = liste[position]
         holder.tvIsim.text = kisi.isim
-        holder.tvTarih.text = kisi.gun.toString()
+        val aylarKisa = arrayOf("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara")
 
-        // RENK MANTIĞI BURADA ÇALIŞIYOR
-        val bugun = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+        // Kartta "8 Nis" veya "22 May" şeklinde yazdırıyoruz
+        holder.tvTarih.text = "${kisi.gun} ${aylarKisa[kisi.ay - 1]}"
 
-        if (kisi.gun < bugun) {
-            // GEÇTİ - KIRMIZI TONU
+        // --- RENK MANTIĞI BAŞLANGICI ---
+        val takvim = java.util.Calendar.getInstance()
+        val suankiAy = takvim.get(java.util.Calendar.MONTH) + 1 // Şu anki ayı bul (1-12)
+        val bugunGun = takvim.get(java.util.Calendar.DAY_OF_MONTH) // Bugün ayın kaçı?
+
+        if (kisi.ay == suankiAy && kisi.gun < bugunGun) {
+            // 1. DURUM: Sadece "Şu anki ayın" içinde olup günü geçenler
             holder.tvDurum.text = "GEÇTİ"
-            holder.arkaplan.setBackgroundColor(android.graphics.Color.parseColor("#FFCDD2")) // Hafif kırmızı
-        } else if (kisi.gun == bugun) {
-            // BUGÜN! - MAVİ TONU
+            holder.arkaplan.setBackgroundColor(android.graphics.Color.parseColor("#FFCDD2"))
+
+        } else if (kisi.ay == suankiAy && kisi.gun == bugunGun) {
+            // 2. DURUM: Tam olarak bugün
             holder.tvDurum.text = "BUGÜN!"
-            holder.arkaplan.setBackgroundColor(android.graphics.Color.parseColor("#BBDEFB")) // Hafif mavi
+            holder.arkaplan.setBackgroundColor(android.graphics.Color.parseColor("#BBDEFB"))
+
         } else {
-            // YAKLAŞIYOR - YEŞİL TONU
+            // 3. DURUM: Geriye kalan her şey (Bu ayın gelecek günleri VEYA sonraki aylar)
             holder.tvDurum.text = "YAKLAŞIYOR"
-            holder.arkaplan.setBackgroundColor(android.graphics.Color.parseColor("#C8E6C9")) // Hafif yeşil
+            holder.arkaplan.setBackgroundColor(android.graphics.Color.parseColor("#C8E6C9"))
         }
+// --- RENK MANTIĞI BİTİŞİ ---
     }
 
     override fun getItemCount(): Int = liste.size
