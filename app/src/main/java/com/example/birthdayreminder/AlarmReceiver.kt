@@ -11,6 +11,8 @@ import androidx.core.app.NotificationCompat
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         // Intent'ten bilgileri alalım
+        android.util.Log.d("ALARM_TEST", "Alarm uyanma servisi tetiklendi!")
+
         val isim = intent.getStringExtra("ISIM") ?: "Biri"
         val mesaj = intent.getStringExtra("MESAJ") ?: "Bugün birinin doğum günü!"
 

@@ -113,7 +113,7 @@ class AddBirthdayActivity : AppCompatActivity() {
         hedefTakvim.set(java.util.Calendar.YEAR, suankiYil)
         hedefTakvim.set(java.util.Calendar.MONTH, ay - 1)
         hedefTakvim.set(java.util.Calendar.DAY_OF_MONTH, gun)
-        hedefTakvim.set(java.util.Calendar.HOUR_OF_DAY, 9) // Sabah 09:00'da çalsın
+        hedefTakvim.set(java.util.Calendar.HOUR_OF_DAY, 9)
         hedefTakvim.set(java.util.Calendar.MINUTE, 0)
 
         // Seçilen seçeneğe göre (o gün, 1 gün önce, 1 hafta önce) tarihi kaydır
